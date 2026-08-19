@@ -193,12 +193,14 @@
     max-width: 800px;
   }
   .back-link {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px;
+    font-size: 1.25rem; line-height: 1;
     color: var(--muted); text-decoration: none; margin-bottom: 2rem;
-    transition: color 0.2s;
+    border: 0.5px solid var(--border);
+    transition: color 0.2s, border-color 0.2s;
   }
-  .back-link:hover { color: var(--gold); }
+  .back-link:hover { color: var(--gold); border-color: var(--gold); }
   .section-eyebrow {
     display: inline-flex; align-items: center; gap: 0.8rem;
     font-size: 0.72rem; font-weight: 500; letter-spacing: 0.2em;
@@ -406,7 +408,7 @@
   <div class="cat-hero-bg"></div>
   <div class="cat-hero-grid"></div>
   <div class="cat-hero-inner">
-    <a href="/#services" class="back-link">← Back to Services</a>
+    <a href="/" class="back-link" aria-label="Back to home">←</a>
     <div class="section-eyebrow">Interiors by DKN</div>
     <h1 class="section-title">Our Interior <em>Catalogue</em></h1>
     <p class="section-subtitle">Explore a curated selection of residential and commercial interiors — from reception lounges and living spaces to retail fit-outs and clinic interiors, crafted with precision and intent.</p>
