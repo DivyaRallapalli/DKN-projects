@@ -566,6 +566,21 @@
     transition: background 0.3s;
     cursor: default;
   }
+  .service-card-link {
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .service-card-link:hover { background: var(--dark-3); }
+  .service-card-link:hover .service-num { color: rgba(201,168,76,0.3); }
+  .service-cta {
+    font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--gold);
+    margin-top: 0.5rem;
+    transition: opacity 0.2s;
+  }
+  .service-card-link:hover .service-cta { opacity: 0.85; }
   .service-card:hover { background: var(--dark-3); }
   .service-card:hover .service-num { color: rgba(201,168,76,0.3); }
   .service-num {
@@ -955,7 +970,7 @@
         <span class="service-tag">Growth Corridors</span>
       </div>
     </div>
-    <div class="service-card">
+    <a href="interiors.html" class="service-card service-card-link">
       <div class="service-num">04</div>
       <div class="service-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1">
@@ -969,7 +984,8 @@
         <span class="service-tag">Commercial Fit-Out</span>
         <span class="service-tag">Turnkey Solutions</span>
       </div>
-    </div>
+      <div class="service-cta">View Catalogue →</div>
+    </a>
   </div>
 </section>
 
