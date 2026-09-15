@@ -768,6 +768,35 @@
     transition: background 0.2s;
   }
   .form-submit:hover { background: var(--gold-light); }
+  .form-submit:disabled { opacity: 0.7; cursor: wait; }
+  .contact-item a { color: inherit; text-decoration: none; }
+  .contact-item a:hover { color: var(--gold); }
+  .channel-options { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+  .channel-option {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.85rem 1rem;
+    border: 0.5px solid rgba(201,168,76,0.2);
+    background: var(--dark-3);
+    cursor: pointer;
+    color: var(--light);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 400;
+  }
+  .channel-option input { accent-color: var(--gold); }
+  .channel-option:has(input:checked) {
+    border-color: var(--gold);
+    box-shadow: inset 0 0 0 0.5px var(--gold);
+  }
+  body.theme-light .channel-option {
+    background: rgba(255,255,255,0.9);
+    color: var(--dark);
+    border-color: rgba(17,17,17,0.15);
+  }
 
   /* FOOTER */
   footer {
@@ -1095,7 +1124,7 @@
       <div class="contact-detail">
         <div class="contact-item">
           <label>Phone</label>
-          <span>+91 9121008609</span>
+          <span><a href="https://wa.me/919121008609">+91 9121008609</a></span>
         </div>
         <div class="contact-item">
           <label>Email</label>
@@ -1114,21 +1143,21 @@
     <form class="contact-form" onsubmit="handleSubmit(event)">
       <div class="form-row">
         <div class="form-group">
-          <label>Full Name</label>
-          <input type="text" placeholder="Your full name" required/>
+          <label for="enquiry-name">Full Name</label>
+          <input id="enquiry-name" name="name" type="text" placeholder="Your full name" required/>
         </div>
         <div class="form-group">
-          <label>Phone Number</label>
-          <input type="tel" placeholder="+91 XXXXX XXXXX"/>
+          <label for="enquiry-phone">Phone Number</label>
+          <input id="enquiry-phone" name="phone" type="tel" placeholder="+91 XXXXX XXXXX" required/>
         </div>
       </div>
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" placeholder="your@email.com" required/>
+        <label for="enquiry-email">Email Address</label>
+        <input id="enquiry-email" name="email" type="email" placeholder="your@email.com" required/>
       </div>
       <div class="form-group">
-        <label>Project Type</label>
-        <select>
+        <label for="enquiry-project-type">Project Type</label>
+        <select id="enquiry-project-type" name="projectType" required>
           <option value="" disabled selected>Select a project type</option>
           <option>Residential — New Construction</option>
           <option>Residential — Renovation</option>
@@ -1138,8 +1167,21 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Tell Us About Your Project</label>
-        <textarea placeholder="Describe your project, location, rough budget, and timeline..."></textarea>
+        <label for="enquiry-details">Tell Us About Your Project</label>
+        <textarea id="enquiry-details" name="details" placeholder="Describe your project, location, rough budget, and timeline..." required></textarea>
+      </div>
+      <div class="form-group">
+        <label>Send Enquiry Via</label>
+        <div class="channel-options">
+          <label class="channel-option">
+            <input type="radio" name="channel" value="whatsapp" checked/>
+            WhatsApp
+          </label>
+          <label class="channel-option">
+            <input type="radio" name="channel" value="email"/>
+            Email
+          </label>
+        </div>
       </div>
       <button type="submit" class="form-submit">Send Enquiry</button>
     </form>
@@ -1157,17 +1199,64 @@
   <div class="footer-copy">© 2025 DKN Projects. All rights reserved.</div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-  // Scroll reveal
-  // Form submit
+<script>
+  var ENQUIRY_WHATSAPP = '919121008609';
+  var ENQUIRY_EMAIL = 'dmrb12345@gmail.com';
+
+  function buildEnquiryMessage(data) {
+    return [
+      'New project enquiry from the DKN Projects website:',
+      '',
+      'Name: ' + data.name,
+      'Phone: ' + data.phone,
+      'Email: ' + data.email,
+      'Project type: ' + data.projectType,
+      '',
+      data.details
+    ].join('\n');
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('.form-submit');
-    btn.textContent = 'Message Sent!';
-    btn.style.background = '#3a6e1f';
-    btn.style.color = '#d4f4b7';
-    setTimeout(() => {
-      btn.textContent = 'Send Enquiry';
-      btn.style.background = '';
-      btn.style.color = '';
-      e.target.r
+    var form = e.target;
+    var btn = form.querySelector('.form-submit');
+    var fields = form.elements;
+    var data = {
+      name: ((fields.namedItem('name') && fields.namedItem('name').value) || '').trim(),
+      phone: ((fields.namedItem('phone') && fields.namedItem('phone').value) || '').trim(),
+      email: ((fields.namedItem('email') && fields.namedItem('email').value) || '').trim(),
+      projectType: ((fields.namedItem('projectType') && fields.namedItem('projectType').value) || '').trim(),
+      details: ((fields.namedItem('details') && fields.namedItem('details').value) || '').trim(),
+      channel: ((fields.namedItem('channel') && fields.namedItem('channel').value) || 'whatsapp')
+    };
+    var message = buildEnquiryMessage(data);
+    var url;
+
+    if (data.channel === 'email') {
+      url = 'mailto:' + ENQUIRY_EMAIL
+        + '?subject=' + encodeURIComponent('DKN Projects enquiry from ' + data.name)
+        + '&body=' + encodeURIComponent(message);
+    } else {
+      url = 'https://wa.me/' + ENQUIRY_WHATSAPP + '?text=' + encodeURIComponent(message);
+    }
+
+    var opened = window.open(url, '_blank', 'noopener');
+    if (!opened) {
+      window.location.href = url;
+    }
+
+
+    var original = btn.textContent;
+    btn.textContent = data.channel === 'email' ? 'Opening Email…' : 'Opening WhatsApp…';
+    btn.disabled = true;
+    setTimeout(function () {
+      btn.textContent = original;
+      btn.disabled = false;
+      form.reset();
+      var whatsapp = form.querySelector('input[name="channel"][value="whatsapp"]');
+      if (whatsapp) whatsapp.checked = true;
+    }, 1800);
+  }
+</script>
+</body>
+</html>
