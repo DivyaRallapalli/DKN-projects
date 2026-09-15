@@ -768,6 +768,24 @@
     transition: background 0.2s;
   }
   .form-submit:hover { background: var(--gold-light); }
+  .form-submit:disabled { opacity: 0.7; cursor: wait; }
+  .contact-item a { color: inherit; text-decoration: none; }
+  .contact-item a:hover { color: var(--gold); }
+  .form-honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .form-status {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--muted);
+    min-height: 1.3em;
+  }
+  .form-status.is-success { color: #7cb342; }
+  .form-status.is-error { color: #e07070; }
 
   /* FOOTER */
   footer {
@@ -1095,7 +1113,7 @@
       <div class="contact-detail">
         <div class="contact-item">
           <label>Phone</label>
-          <span>+91 9121008609</span>
+          <span><a href="https://wa.me/919121008609">+91 9121008609</a></span>
         </div>
         <div class="contact-item">
           <label>Email</label>
@@ -1114,21 +1132,21 @@
     <form class="contact-form" onsubmit="handleSubmit(event)">
       <div class="form-row">
         <div class="form-group">
-          <label>Full Name</label>
-          <input type="text" placeholder="Your full name" required/>
+          <label for="enquiry-name">Full Name</label>
+          <input id="enquiry-name" name="name" type="text" placeholder="Your full name" required/>
         </div>
         <div class="form-group">
-          <label>Phone Number</label>
-          <input type="tel" placeholder="+91 XXXXX XXXXX"/>
+          <label for="enquiry-phone">Phone Number</label>
+          <input id="enquiry-phone" name="phone" type="tel" placeholder="+91 XXXXX XXXXX" required/>
         </div>
       </div>
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" placeholder="your@email.com" required/>
+        <label for="enquiry-email">Email Address</label>
+        <input id="enquiry-email" name="email" type="email" placeholder="your@email.com" required/>
       </div>
       <div class="form-group">
-        <label>Project Type</label>
-        <select>
+        <label for="enquiry-project-type">Project Type</label>
+        <select id="enquiry-project-type" name="projectType" required>
           <option value="" disabled selected>Select a project type</option>
           <option>Residential — New Construction</option>
           <option>Residential — Renovation</option>
@@ -1138,10 +1156,15 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Tell Us About Your Project</label>
-        <textarea placeholder="Describe your project, location, rough budget, and timeline..."></textarea>
+        <label for="enquiry-details">Tell Us About Your Project</label>
+        <textarea id="enquiry-details" name="details" placeholder="Describe your project, location, rough budget, and timeline..." required></textarea>
+      </div>
+      <div class="form-honeypot" aria-hidden="true">
+        <label for="enquiry-company">Company</label>
+        <input id="enquiry-company" name="company" type="text" tabindex="-1" autocomplete="off"/>
       </div>
       <button type="submit" class="form-submit">Send Enquiry</button>
+      <p id="enquiry-status" class="form-status" role="status" aria-live="polite"></p>
     </form>
   </div>
 </section>
@@ -1157,17 +1180,64 @@
   <div class="footer-copy">© 2025 DKN Projects. All rights reserved.</div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-  // Scroll reveal
-  // Form submit
+<script>
   function handleSubmit(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('.form-submit');
-    btn.textContent = 'Message Sent!';
-    btn.style.background = '#3a6e1f';
-    btn.style.color = '#d4f4b7';
-    setTimeout(() => {
-      btn.textContent = 'Send Enquiry';
-      btn.style.background = '';
-      btn.style.color = '';
-      e.target.r
+    var form = e.target;
+    var btn = form.querySelector('.form-submit');
+    var status = document.getElementById('enquiry-status');
+    var fields = form.elements;
+    var data = {
+      name: ((fields.namedItem('name') && fields.namedItem('name').value) || '').trim(),
+      phone: ((fields.namedItem('phone') && fields.namedItem('phone').value) || '').trim(),
+      email: ((fields.namedItem('email') && fields.namedItem('email').value) || '').trim(),
+      projectType: ((fields.namedItem('projectType') && fields.namedItem('projectType').value) || '').trim(),
+      details: ((fields.namedItem('details') && fields.namedItem('details').value) || '').trim(),
+      company: ((fields.namedItem('company') && fields.namedItem('company').value) || '').trim()
+    };
+
+    var original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    if (status) {
+      status.className = 'form-status';
+      status.textContent = '';
+    }
+
+    fetch('/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(function (res) {
+      return res.json().then(function (payload) {
+        return { res: res, payload: payload };
+      }).catch(function () {
+        return { res: res, payload: {} };
+      });
+    }).then(function (result) {
+      var payload = result.payload || {};
+      if (!result.res.ok || !payload.ok) {
+        throw new Error(payload.error || 'Could not send your enquiry.');
+      }
+      btn.textContent = 'Enquiry Sent';
+      if (status) {
+        status.className = 'form-status is-success';
+        status.textContent = 'Thanks. We have emailed DKN and sent a WhatsApp message with your details.';
+      }
+      form.reset();
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 2200);
+    }).catch(function (err) {
+      btn.textContent = original;
+      btn.disabled = false;
+      if (status) {
+        status.className = 'form-status is-error';
+        status.textContent = (err && err.message) ? err.message : 'Could not send your enquiry.';
+      }
+    });
+  }
+</script>
+</body>
+</html>

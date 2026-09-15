@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Static site — no package dependencies. Verify required assets exist.
+# Static site plus the enquiry API. Verify required assets exist.
 test -f index.html
-test -d images
-test "$(find images -type f | wc -l)" -gt 0
+test -f server.js
+test -f api/enquiry.js
 
-echo "Static site structure verified."
+echo "Site structure verified."
