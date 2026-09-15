@@ -752,6 +752,15 @@
     -webkit-appearance: none;
     appearance: none;
   }
+  .form-group input[type="radio"] {
+    -webkit-appearance: radio;
+    appearance: radio;
+    padding: 0;
+    background: none;
+    border: none;
+    width: 16px;
+    height: 16px;
+  }
   .form-group input::placeholder,
   .form-group textarea::placeholder { color: var(--muted); }
   .form-group input:focus,
@@ -787,10 +796,11 @@
     font-size: 0.88rem;
     font-weight: 400;
   }
-  .channel-option input { accent-color: var(--gold); }
+  .channel-option input { width: 16px; height: 16px; accent-color: var(--gold); flex-shrink: 0; }
   .channel-option:has(input:checked) {
     border-color: var(--gold);
-    box-shadow: inset 0 0 0 0.5px var(--gold);
+    box-shadow: inset 0 0 0 1px var(--gold);
+    background: rgba(201,168,76,0.14);
   }
   body.theme-light .channel-option {
     background: rgba(255,255,255,0.9);
