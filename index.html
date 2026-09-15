@@ -752,15 +752,6 @@
     -webkit-appearance: none;
     appearance: none;
   }
-  .form-group input[type="radio"] {
-    -webkit-appearance: radio;
-    appearance: radio;
-    padding: 0;
-    background: none;
-    border: none;
-    width: 16px;
-    height: 16px;
-  }
   .form-group input::placeholder,
   .form-group textarea::placeholder { color: var(--muted); }
   .form-group input:focus,
@@ -780,33 +771,21 @@
   .form-submit:disabled { opacity: 0.7; cursor: wait; }
   .contact-item a { color: inherit; text-decoration: none; }
   .contact-item a:hover { color: var(--gold); }
-  .channel-options { display: flex; gap: 0.8rem; flex-wrap: wrap; }
-  .channel-option {
-    flex: 1;
-    min-width: 140px;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.85rem 1rem;
-    border: 0.5px solid rgba(201,168,76,0.2);
-    background: var(--dark-3);
-    cursor: pointer;
-    color: var(--light);
-    font-family: 'Outfit', sans-serif;
+  .form-honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .form-status {
     font-size: 0.88rem;
-    font-weight: 400;
+    line-height: 1.5;
+    color: var(--muted);
+    min-height: 1.3em;
   }
-  .channel-option input { width: 16px; height: 16px; accent-color: var(--gold); flex-shrink: 0; }
-  .channel-option:has(input:checked) {
-    border-color: var(--gold);
-    box-shadow: inset 0 0 0 1px var(--gold);
-    background: rgba(201,168,76,0.14);
-  }
-  body.theme-light .channel-option {
-    background: rgba(255,255,255,0.9);
-    color: var(--dark);
-    border-color: rgba(17,17,17,0.15);
-  }
+  .form-status.is-success { color: #7cb342; }
+  .form-status.is-error { color: #e07070; }
 
   /* FOOTER */
   footer {
@@ -1180,20 +1159,12 @@
         <label for="enquiry-details">Tell Us About Your Project</label>
         <textarea id="enquiry-details" name="details" placeholder="Describe your project, location, rough budget, and timeline..." required></textarea>
       </div>
-      <div class="form-group">
-        <label>Send Enquiry Via</label>
-        <div class="channel-options">
-          <label class="channel-option">
-            <input type="radio" name="channel" value="whatsapp" checked/>
-            WhatsApp
-          </label>
-          <label class="channel-option">
-            <input type="radio" name="channel" value="email"/>
-            Email
-          </label>
-        </div>
+      <div class="form-honeypot" aria-hidden="true">
+        <label for="enquiry-company">Company</label>
+        <input id="enquiry-company" name="company" type="text" tabindex="-1" autocomplete="off"/>
       </div>
       <button type="submit" class="form-submit">Send Enquiry</button>
+      <p id="enquiry-status" class="form-status" role="status" aria-live="polite"></p>
     </form>
   </div>
 </section>
@@ -1210,26 +1181,11 @@
 </footer>
 
 <script>
-  var ENQUIRY_WHATSAPP = '8129991282';
-  var ENQUIRY_EMAIL = 'divya.rallapalli.1@gmail.com';
-
-  function buildEnquiryMessage(data) {
-    return [
-      'New project enquiry from the DKN Projects website:',
-      '',
-      'Name: ' + data.name,
-      'Phone: ' + data.phone,
-      'Email: ' + data.email,
-      'Project type: ' + data.projectType,
-      '',
-      data.details
-    ].join('\n');
-  }
-
   function handleSubmit(e) {
     e.preventDefault();
     var form = e.target;
     var btn = form.querySelector('.form-submit');
+    var status = document.getElementById('enquiry-status');
     var fields = form.elements;
     var data = {
       name: ((fields.namedItem('name') && fields.namedItem('name').value) || '').trim(),
@@ -1237,35 +1193,50 @@
       email: ((fields.namedItem('email') && fields.namedItem('email').value) || '').trim(),
       projectType: ((fields.namedItem('projectType') && fields.namedItem('projectType').value) || '').trim(),
       details: ((fields.namedItem('details') && fields.namedItem('details').value) || '').trim(),
-      channel: ((fields.namedItem('channel') && fields.namedItem('channel').value) || 'whatsapp')
+      company: ((fields.namedItem('company') && fields.namedItem('company').value) || '').trim()
     };
-    var message = buildEnquiryMessage(data);
-    var url;
-
-    if (data.channel === 'email') {
-      url = 'mailto:' + ENQUIRY_EMAIL
-        + '?subject=' + encodeURIComponent('DKN Projects enquiry from ' + data.name)
-        + '&body=' + encodeURIComponent(message);
-    } else {
-      url = 'https://wa.me/' + ENQUIRY_WHATSAPP + '?text=' + encodeURIComponent(message);
-    }
-
-    var opened = window.open(url, '_blank', 'noopener');
-    if (!opened) {
-      window.location.href = url;
-    }
-
 
     var original = btn.textContent;
-    btn.textContent = data.channel === 'email' ? 'Opening Email…' : 'Opening WhatsApp…';
     btn.disabled = true;
-    setTimeout(function () {
+    btn.textContent = 'Sending…';
+    if (status) {
+      status.className = 'form-status';
+      status.textContent = '';
+    }
+
+    fetch('/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(function (res) {
+      return res.json().then(function (payload) {
+        return { res: res, payload: payload };
+      }).catch(function () {
+        return { res: res, payload: {} };
+      });
+    }).then(function (result) {
+      var payload = result.payload || {};
+      if (!result.res.ok || !payload.ok) {
+        throw new Error(payload.error || 'Could not send your enquiry.');
+      }
+      btn.textContent = 'Enquiry Sent';
+      if (status) {
+        status.className = 'form-status is-success';
+        status.textContent = 'Thanks. We have emailed DKN and sent a WhatsApp message with your details.';
+      }
+      form.reset();
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 2200);
+    }).catch(function (err) {
       btn.textContent = original;
       btn.disabled = false;
-      form.reset();
-      var whatsapp = form.querySelector('input[name="channel"][value="whatsapp"]');
-      if (whatsapp) whatsapp.checked = true;
-    }, 1800);
+      if (status) {
+        status.className = 'form-status is-error';
+        status.textContent = (err && err.message) ? err.message : 'Could not send your enquiry.';
+      }
+    });
   }
 </script>
 </body>
