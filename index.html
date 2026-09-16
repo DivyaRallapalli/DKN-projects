@@ -768,6 +768,14 @@
     transition: background 0.2s;
   }
   .form-submit:hover { background: var(--gold-light); }
+  .form-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+  .form-honeypot {
+    position: absolute; left: -9999px; height: 0; width: 0; overflow: hidden;
+  }
+  .form-status { font-size: 0.82rem; line-height: 1.5; margin: 0; }
+  .form-status a { color: var(--gold); }
+  .form-status.is-success { color: #b7e39a; }
+  .form-status.is-error { color: #f0b4b4; }
 
   /* FOOTER */
   footer {
@@ -1112,23 +1120,24 @@
       </div>
     </div>
     <form class="contact-form" onsubmit="handleSubmit(event)">
+      <input type="text" name="_honey" class="form-honeypot" tabindex="-1" autocomplete="off"/>
       <div class="form-row">
         <div class="form-group">
-          <label>Full Name</label>
-          <input type="text" placeholder="Your full name" required/>
+          <label for="enquiry-name">Full Name</label>
+          <input id="enquiry-name" name="name" type="text" placeholder="Your full name" required/>
         </div>
         <div class="form-group">
-          <label>Phone Number</label>
-          <input type="tel" placeholder="+91 XXXXX XXXXX"/>
+          <label for="enquiry-phone">Phone Number</label>
+          <input id="enquiry-phone" name="phone" type="tel" placeholder="+91 XXXXX XXXXX"/>
         </div>
       </div>
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" placeholder="your@email.com" required/>
+        <label for="enquiry-email">Email Address</label>
+        <input id="enquiry-email" name="email" type="email" placeholder="your@email.com" required/>
       </div>
       <div class="form-group">
-        <label>Project Type</label>
-        <select>
+        <label for="enquiry-type">Project Type</label>
+        <select id="enquiry-type" name="project_type" required>
           <option value="" disabled selected>Select a project type</option>
           <option>Residential — New Construction</option>
           <option>Residential — Renovation</option>
@@ -1138,10 +1147,11 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Tell Us About Your Project</label>
-        <textarea placeholder="Describe your project, location, rough budget, and timeline..."></textarea>
+        <label for="enquiry-message">Tell Us About Your Project</label>
+        <textarea id="enquiry-message" name="message" placeholder="Describe your project, location, rough budget, and timeline..."></textarea>
       </div>
       <button type="submit" class="form-submit">Send Enquiry</button>
+      <p class="form-status" id="enquiry-status" hidden></p>
     </form>
   </div>
 </section>
@@ -1162,12 +1172,83 @@
   // Form submit
   function handleSubmit(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('.form-submit');
-    btn.textContent = 'Message Sent!';
-    btn.style.background = '#3a6e1f';
-    btn.style.color = '#d4f4b7';
-    setTimeout(() => {
-      btn.textContent = 'Send Enquiry';
-      btn.style.background = '';
-      btn.style.color = '';
-      e.target.r
+    var form = e.target;
+    var btn = form.querySelector('.form-submit');
+    var status = document.getElementById('enquiry-status');
+    var honey = form.querySelector('[name="_honey"]');
+    if (honey && honey.value) return;
+
+    var name = (form.querySelector('[name="name"]').value || '').trim();
+    var phone = (form.querySelector('[name="phone"]').value || '').trim();
+    var email = (form.querySelector('[name="email"]').value || '').trim();
+    var projectType = form.querySelector('[name="project_type"]').value || '';
+    var message = (form.querySelector('[name="message"]').value || '').trim();
+    var payload = {
+      name: name,
+      phone: phone,
+      email: email,
+      project_type: projectType,
+      message: message,
+      _subject: 'New website enquiry from ' + name,
+      _template: 'table',
+      _captcha: 'false'
+    };
+    var recipients = [
+      'divya.rallapalli.1@gmail.com',
+      'dkarthik952@gmail.com'
+    ];
+
+    function setStatus(kind, html) {
+      status.hidden = false;
+      status.className = 'form-status is-' + kind;
+      status.innerHTML = html;
+    }
+
+    function sendTo(recipient) {
+      return fetch('https://formsubmit.co/ajax/' + encodeURIComponent(recipient), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, data: data };
+        });
+      }).then(function (result) {
+        if (!result.ok || (result.data && result.data.success === 'false')) {
+          throw new Error((result.data && result.data.message) || 'Send failed');
+        }
+      });
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    setStatus('success', 'Sending your enquiry...');
+
+    Promise.all(recipients.map(sendTo))
+      .then(function () {
+        btn.textContent = 'Message Sent!';
+        btn.style.background = '#3a6e1f';
+        btn.style.color = '#d4f4b7';
+        setStatus('success', 'Thanks — we received your enquiry and will reply within 24 hours.');
+        form.reset();
+        setTimeout(function () {
+          btn.disabled = false;
+          btn.textContent = 'Send Enquiry';
+          btn.style.background = '';
+          btn.style.color = '';
+        }, 4000);
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = 'Send Enquiry';
+        btn.style.background = '';
+        btn.style.color = '';
+        setStatus('error', 'We could not send the form just now. Please try again in a moment.');
+      });
+  }
+</script>
+</body>
+</html>
