@@ -759,15 +759,41 @@
   .form-group textarea:focus { border-color: var(--gold); }
   .form-group textarea { resize: vertical; min-height: 120px; }
   .form-group select option { background: var(--dark-3); }
-  .form-submit {
+  .form-actions {
+    display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: stretch;
+  }
+  .form-submit,
+  .form-submit-whatsapp {
     font-family: 'Outfit', sans-serif;
     font-size: 0.78rem; font-weight: 500; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--dark);
-    background: var(--gold); border: none; cursor: pointer;
-    padding: 1.1rem 3rem; align-self: flex-start;
-    transition: background 0.2s;
+    text-transform: uppercase; cursor: pointer;
+    padding: 1.1rem 1.6rem; flex: 1 1 220px;
+    transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+  }
+  .form-submit {
+    color: var(--dark);
+    background: var(--gold); border: none;
   }
   .form-submit:hover { background: var(--gold-light); }
+  .form-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+  .form-submit-whatsapp {
+    color: var(--light);
+    background: transparent;
+    border: 0.5px solid rgba(245,240,232,0.3);
+  }
+  .form-submit-whatsapp:hover { border-color: var(--gold); color: var(--gold); }
+  body.theme-light .form-submit-whatsapp {
+    color: var(--dark);
+    border-color: rgba(28,28,28,0.25);
+  }
+  body.theme-light .form-submit-whatsapp:hover { border-color: var(--gold); color: var(--gold); }
+  .form-honeypot {
+    position: absolute; left: -9999px; height: 0; width: 0; overflow: hidden;
+  }
+  .form-status { font-size: 0.82rem; line-height: 1.5; margin: 0; }
+  .form-status a { color: var(--gold); }
+  .form-status.is-success { color: #b7e39a; }
+  .form-status.is-error { color: #f0b4b4; }
 
   /* FOOTER */
   footer {
@@ -834,6 +860,8 @@
     .hero-stats { flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; }
     .hero-stat-item { text-align: left; }
     .form-row { grid-template-columns: 1fr; }
+    .form-actions { flex-direction: column; }
+    .form-submit, .form-submit-whatsapp { flex: 1 1 auto; width: 100%; }
   }
   @media (max-width: 600px) {
     section { padding: 5rem 4%; }
@@ -1112,23 +1140,24 @@
       </div>
     </div>
     <form class="contact-form" onsubmit="handleSubmit(event)">
+      <input type="text" name="_honey" class="form-honeypot" tabindex="-1" autocomplete="off"/>
       <div class="form-row">
         <div class="form-group">
-          <label>Full Name</label>
-          <input type="text" placeholder="Your full name" required/>
+          <label for="enquiry-name">Full Name</label>
+          <input id="enquiry-name" name="name" type="text" placeholder="Your full name" required/>
         </div>
         <div class="form-group">
-          <label>Phone Number</label>
-          <input type="tel" placeholder="+91 XXXXX XXXXX"/>
+          <label for="enquiry-phone">Phone Number</label>
+          <input id="enquiry-phone" name="phone" type="tel" placeholder="+91 XXXXX XXXXX"/>
         </div>
       </div>
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" placeholder="your@email.com" required/>
+        <label for="enquiry-email">Email Address</label>
+        <input id="enquiry-email" name="email" type="email" placeholder="your@email.com" required/>
       </div>
       <div class="form-group">
-        <label>Project Type</label>
-        <select>
+        <label for="enquiry-type">Project Type</label>
+        <select id="enquiry-type" name="project_type" required>
           <option value="" disabled selected>Select a project type</option>
           <option>Residential — New Construction</option>
           <option>Residential — Renovation</option>
@@ -1138,10 +1167,14 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Tell Us About Your Project</label>
-        <textarea placeholder="Describe your project, location, rough budget, and timeline..."></textarea>
+        <label for="enquiry-message">Tell Us About Your Project</label>
+        <textarea id="enquiry-message" name="message" placeholder="Describe your project, location, rough budget, and timeline..."></textarea>
       </div>
-      <button type="submit" class="form-submit">Send Enquiry</button>
+      <div class="form-actions">
+        <button type="submit" class="form-submit" id="enquiry-email-btn">Enquiry via Email</button>
+        <button type="button" class="form-submit-whatsapp" id="enquiry-whatsapp-btn">Enquiry via WhatsApp</button>
+      </div>
+      <p class="form-status" id="enquiry-status" hidden></p>
     </form>
   </div>
 </section>
@@ -1160,14 +1193,131 @@
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
   // Scroll reveal
   // Form submit
+  function getEnquiryFields(form) {
+    return {
+      name: (form.querySelector('[name="name"]').value || '').trim(),
+      phone: (form.querySelector('[name="phone"]').value || '').trim(),
+      email: (form.querySelector('[name="email"]').value || '').trim(),
+      projectType: form.querySelector('[name="project_type"]').value || '',
+      message: (form.querySelector('[name="message"]').value || '').trim()
+    };
+  }
+
+  function enquiryMessage(fields) {
+    return 'Hi DKN Projects, I would like to enquire.\n' +
+      'Name: ' + fields.name + '\n' +
+      'Phone: ' + fields.phone + '\n' +
+      'Email: ' + fields.email + '\n' +
+      'Project type: ' + fields.projectType + '\n' +
+      'Details: ' + fields.message;
+  }
+
+  function resetEmailButton(btn) {
+    btn.disabled = false;
+    btn.textContent = 'Enquiry via Email';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.removeAttribute('data-sent');
+    btn.removeAttribute('data-sending');
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('.form-submit');
-    btn.textContent = 'Message Sent!';
-    btn.style.background = '#3a6e1f';
-    btn.style.color = '#d4f4b7';
-    setTimeout(() => {
-      btn.textContent = 'Send Enquiry';
-      btn.style.background = '';
-      btn.style.color = '';
-      e.target.r
+    var form = e.target;
+    var btn = document.getElementById('enquiry-email-btn');
+    var status = document.getElementById('enquiry-status');
+    var honey = form.querySelector('[name="_honey"]');
+    if (honey && honey.value) return;
+    if (btn.disabled) return;
+
+    var fields = getEnquiryFields(form);
+    var payload = {
+      name: fields.name,
+      phone: fields.phone,
+      email: fields.email,
+      project_type: fields.projectType,
+      message: fields.message,
+      _subject: 'New website enquiry from ' + fields.name,
+      _template: 'table',
+      _captcha: 'false'
+    };
+    var recipients = [
+      'divya.rallapalli.1@gmail.com',
+      'dkarthik952@gmail.com'
+    ];
+
+    function setStatus(kind, html) {
+      status.hidden = false;
+      status.className = 'form-status is-' + kind;
+      status.innerHTML = html;
+    }
+
+    function sendTo(recipient) {
+      return fetch('https://formsubmit.co/ajax/' + encodeURIComponent(recipient), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, data: data };
+        });
+      }).then(function (result) {
+        if (!result.ok || (result.data && result.data.success === 'false')) {
+          throw new Error((result.data && result.data.message) || 'Send failed');
+        }
+      });
+    }
+
+    btn.disabled = true;
+    btn.setAttribute('data-sending', '1');
+    btn.textContent = 'Sending...';
+    setStatus('success', 'Sending your enquiry...');
+
+    Promise.all(recipients.map(sendTo))
+      .then(function () {
+        btn.removeAttribute('data-sending');
+        btn.setAttribute('data-sent', '1');
+        btn.disabled = true;
+        btn.textContent = 'Email sent';
+        btn.style.background = '#3a6e1f';
+        btn.style.color = '#d4f4b7';
+        setStatus('success', 'Thanks — we received your enquiry by email and will reply within 24 hours.');
+      })
+      .catch(function () {
+        resetEmailButton(btn);
+        setStatus('error', 'We could not send the email just now. Please try again in a moment.');
+      });
+  }
+
+  function handleWhatsAppEnquiry() {
+    var form = document.querySelector('.contact-form');
+    var honey = form.querySelector('[name="_honey"]');
+    if (honey && honey.value) return;
+    if (!form.reportValidity()) return;
+
+    var text = encodeURIComponent(enquiryMessage(getEnquiryFields(form)));
+    window.open('https://wa.me/918129991282?text=' + text, '_blank', 'noopener');
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('.contact-form');
+    var emailBtn = document.getElementById('enquiry-email-btn');
+    var whatsappBtn = document.getElementById('enquiry-whatsapp-btn');
+    if (!form || !emailBtn || !whatsappBtn) return;
+
+    function unlockEmailIfFormChanged() {
+      if (emailBtn.getAttribute('data-sending') === '1') return;
+      if (emailBtn.getAttribute('data-sent') !== '1') return;
+      resetEmailButton(emailBtn);
+    }
+
+    form.addEventListener('input', unlockEmailIfFormChanged);
+    form.addEventListener('change', unlockEmailIfFormChanged);
+    whatsappBtn.addEventListener('click', handleWhatsAppEnquiry);
+  });
+</script>
+</body>
+</html>
